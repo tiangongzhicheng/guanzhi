@@ -1,11 +1,14 @@
 package com.moyu.test;
 
 import com.alibaba.fastjson.JSONObject;
+import com.moyu.entity.User;
 import com.moyu.entity.Worker;
+import org.assertj.core.util.Lists;
 import org.junit.Test;
 import java.io.*;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by Administrator on 2018/4/5.
@@ -33,10 +36,23 @@ public class MyTest {
 
     @Test
     public void test2() throws IOException, InterruptedException {
+        User user = new User();
+        user.setId(1);
+        user.setUserName("22");
+        User user2 = new User();
+        user2.setId(1);
+        user2.setUserName("11");
+        List<User> users = Lists.newArrayList(user, user2);
+        Map<Integer, String> map = users.stream().collect(Collectors.toMap(User::getId, User::getUserName,(q,w)->{
+            return getUser(q,w);
+        }));
+        System.out.println(map);
 
-        Thread.sleep(5000);
-        System.out.println("123");
 
+    }
+
+    public String getUser(String user1, String  user2){
+        return "user2";
 
     }
 

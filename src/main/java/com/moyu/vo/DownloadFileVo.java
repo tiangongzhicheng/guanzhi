@@ -6,6 +6,7 @@ import lombok.Data;
 public class DownloadFileVo {
     private String httpUrl;
     private String savePath;
+    private String folderStr;
     private Integer folderNo;
     private Integer endFolderNo;
 }

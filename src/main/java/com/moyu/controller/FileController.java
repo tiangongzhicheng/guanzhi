@@ -7,10 +7,13 @@ import com.moyu.vo.BaseResponse;
 import com.moyu.vo.DownloadFileVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -26,9 +29,10 @@ public class FileController {
      * @return
      */
     @RequestMapping("/downFileFromUrl")
-    public BaseResponse downFileFromUrl(DownloadFileVo fileVo){
+    public BaseResponse downFileFromUrl(DownloadFileVo fileVo,
+                                        @RequestHeader Map<String, String> headers){
         try {
-            fileService.downFileFromUrl(fileVo);
+            fileService.downFileFromUrl(fileVo, headers);
         }catch (Exception e){
             log.error("下载文件出错了===={}",e);
             return BaseResponse.getFailedRes("下载文件失败");

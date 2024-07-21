@@ -3,6 +3,7 @@ package com.moyu.service.impl;
 import com.moyu.mapper.DownFileMapper;
 import com.moyu.utils.FileUtils;
 import com.moyu.utils.HttpClientUtil;
+import com.moyu.utils.HttpRequestUtil;
 import com.moyu.vo.DownloadFileVo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -17,55 +19,91 @@ public class FileService {
 
     @Autowired
     private FileUtils fileUtils;
+
     @Autowired
     private HttpClientUtil httpClientUtil;
+
     @Autowired
     private DownFileMapper downFileMapper;
 
     private volatile boolean runStatus = true;
 
+
     /**
-     * 下载图片
+     * 单文件夹下载图片
+     *
      * @param fileVo
      */
     @Async
-    public void downFileFromUrl(DownloadFileVo fileVo){
+    public void downFileFromUrl(DownloadFileVo fileVo, Map<String, String> headers) {
+        //下载的文件集名称
+        String folderStr = fileVo.getFolderStr();
+        Integer picIndex = 1;
+        boolean haveNext = true;
+        try {
+            while (haveNext && runStatus) {
+                log.info("folderStr==={}, picIndex==={}", folderStr, picIndex);
+                String picIndexStr = String.format("%04d", picIndex);
+                String httpUrl = fileVo.getHttpUrl() + folderStr + "/" + picIndexStr + ".jpg";
+                String fileName = httpUrl.substring(httpUrl.lastIndexOf("/") + 1);
+                String savePath = fileVo.getSavePath() + "/" + folderStr;
+                boolean success = fileUtils.downloadFile(httpUrl, fileName, savePath, headers);
+                if (success) {
+                    picIndex++;
+                } else {
+                    log.info("下载完成,一共{}个文件", picIndex);
+                    return;
+                }
+            }
+        } catch (IOException e) {
+            log.error("存储文件失败了=={}", e);
+        }
+    }
+
+    /**
+     * 循环多文件夹下载图片
+     *
+     * @param fileVo
+     */
+    @Async
+    public void downFolderFromUrl(DownloadFileVo fileVo) {
         Integer folderNo = fileVo.getFolderNo();
         Integer picIndex = 1;
         boolean haveNext = true;
         try {
-            while (haveNext && runStatus){
-                log.info("folderNo==={},picIndex==={}",folderNo,picIndex);
+            while (haveNext && runStatus) {
+                log.info("folderNo==={},picIndex==={}", folderNo, picIndex);
                 String httpUrl = fileVo.getHttpUrl() + folderNo + "/" + picIndex + ".jpg";
-                String fileName = httpUrl.substring(httpUrl.lastIndexOf("/")+1);
-                boolean success = fileUtils.downloadFile(httpUrl, fileName, fileVo.getSavePath()+"/"+folderNo);
-                if(success){
+                String fileName = httpUrl.substring(httpUrl.lastIndexOf("/") + 1);
+                boolean success = fileUtils.downloadFile(httpUrl, fileName, fileVo.getSavePath() + "/" + folderNo);
+                if (success) {
                     picIndex++;
-                }else {
+                } else {
                     picIndex = 1;
                     folderNo++;
                 }
-                if(folderNo > fileVo.getEndFolderNo()){
+                if (folderNo > fileVo.getEndFolderNo()) {
                     haveNext = false;
                 }
             }
         } catch (IOException e) {
             downFileMapper.insertData(folderNo.toString());
-            log.error("存储文件失败了=={}",e);
+            log.error("存储文件失败了=={}", e);
         }
     }
 
-    public void runStatus(Integer run){
-        if(run == 0){
-            this.runStatus=false;
-        }else {
-            this.runStatus=true;
+    public void runStatus(Integer run) {
+        if (run == 0) {
+            this.runStatus = false;
+        } else {
+            this.runStatus = true;
         }
     }
 
 
     /**
      * 下载ts文件
+     *
      * @param fileVo
      * @throws IOException
      */
@@ -84,36 +122,35 @@ public class FileService {
         ByteArrayOutputStream byteArrayOutputStream = null;
 
         //将多个ts缓存到list
-        while (haveNext){
+        while (haveNext) {
             try {
-                String fileName = makeTsIndex(tsIndex)+".ts";
+                String fileName = makeTsIndex(tsIndex) + ".ts";
                 String url = fileVo.getHttpUrl() + fileName;
-                log.info("url==={}",url);
+                log.info("url==={}", url);
                 //fileOutputStream = new FileOutputStream(fileVo.getSavePath() + fileName);
-                byteArrayOutputStream = httpClientUtil.sendHttpIgnoreVerify(url);
-                if(byteArrayOutputStream==null){
+                byteArrayOutputStream = httpClientUtil.doGetDownloadIgnoreVerify(url);
+                if (byteArrayOutputStream == null) {
                     haveNext = false;
-                }else {
+                } else {
                     tsIndex++;
                     fileOutputStream.write(byteArrayOutputStream.toByteArray());
                     fileOutputStream.flush();
                 }
-            }catch (Exception e){
-                log.error("downloadTsFile下载ts文件出错了，info====={}",e);
-            }finally {
-                if(byteArrayOutputStream != null)
+            } catch (Exception e) {
+                log.error("downloadTsFile下载ts文件出错了，info====={}", e);
+            } finally {
+                if (byteArrayOutputStream != null)
                     byteArrayOutputStream.close();
             }
         }
 
-        if(fileOutputStream != null)
+        if (fileOutputStream != null)
             fileOutputStream.close();
-        log.info(saveFileName+"执行结束");
+        log.info(saveFileName + "执行结束");
 
     }
 
     /**
-     *
      * @param fileVo
      * @throws IOException
      */
@@ -122,19 +159,19 @@ public class FileService {
         Integer endFolderNo = fileVo.getEndFolderNo();
 
         ByteArrayOutputStream outputStream = null;
-        while (folderNo<=endFolderNo){
-            log.info("index===={}",folderNo);
+        while (folderNo <= endFolderNo) {
+            log.info("index===={}", folderNo);
             try {
                 String httpUrl = fileVo.getHttpUrl() + folderNo + ".html";
-                outputStream = httpClientUtil.sendHttpIgnoreVerify(httpUrl);
-                if(outputStream == null){
+                outputStream = httpClientUtil.doGetDownloadIgnoreVerify(httpUrl);
+                if (outputStream == null) {
                     folderNo++;
                     continue;
                 }
                 byte[] bytes = outputStream.toByteArray();
                 String webString = new String(bytes);
                 int m3u8Index = webString.indexOf("m3u8");
-                if(m3u8Index<0){
+                if (m3u8Index < 0) {
                     folderNo++;
                     continue;
                 }
@@ -142,11 +179,11 @@ public class FileService {
                 int httpIndex = m3u8String.lastIndexOf("http");
                 String url = m3u8String.substring(httpIndex, m3u8Index);
                 System.out.println(url);
-            }catch (Exception e){
-                log.error("downloadWebFile出错了，info==={}",e);
-            }finally {
+            } catch (Exception e) {
+                log.error("downloadWebFile出错了，info==={}", e);
+            } finally {
                 folderNo++;
-                if (outputStream!=null)
+                if (outputStream != null)
                     outputStream.close();
             }
         }
@@ -162,39 +199,39 @@ public class FileService {
         ByteArrayOutputStream outputStream = null;
         try {
             fileOutputStream = new FileOutputStream(saveDir + "/" + saveFileName);
-            outputStream = httpClientUtil.sendHttpIgnoreVerify(fileVo.getHttpUrl());
+            outputStream = httpClientUtil.doGetDownloadIgnoreVerify(fileVo.getHttpUrl());
             fileOutputStream.write(outputStream.toByteArray());
-        }catch (Exception e){
+        } catch (Exception e) {
 
-        }finally {
-            if (fileOutputStream!=null)
+        } finally {
+            if (fileOutputStream != null)
                 fileOutputStream.close();
-            if (outputStream!=null)
+            if (outputStream != null)
                 outputStream.close();
         }
     }
 
-    public String makeTsIndex(Integer index){
-        if (index<10){
-            return "00"+index;
-        }else if(index<100){
-            return "0"+index;
-        }else {
+    public String makeTsIndex(Integer index) {
+        if (index < 10) {
+            return "00" + index;
+        } else if (index < 100) {
+            return "0" + index;
+        } else {
             return index.toString();
         }
     }
 
-    public String makeTsFileName(String url){
+    public String makeTsFileName(String url) {
         int outIndex = url.lastIndexOf("/out");
         String substring = url.substring(0, outIndex);
         int nameIndex = substring.lastIndexOf("/");
-        return substring.substring(nameIndex+1)+".mp4";
+        return substring.substring(nameIndex + 1) + ".mp4";
     }
 
 
     public void downloadTsFile2(String httpUrl) throws IOException {
-        ByteArrayOutputStream byteArrayOutputStream = httpClientUtil.sendHttpIgnoreVerify(httpUrl);
-        if (byteArrayOutputStream == null){
+        ByteArrayOutputStream byteArrayOutputStream = httpClientUtil.doGetDownloadIgnoreVerify(httpUrl);
+        if (byteArrayOutputStream == null) {
             return;
         }
         FileOutputStream fileOutputStream = new FileOutputStream("D:\\test22\\out.ts");

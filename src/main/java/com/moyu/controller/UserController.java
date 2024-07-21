@@ -1,5 +1,6 @@
 package com.moyu.controller;
 
+import com.moyu.annotation.AuditOperate;
 import com.moyu.entity.User;
 import com.moyu.service.UserService;
 import com.moyu.vo.UserVo;
@@ -26,6 +27,14 @@ public class UserController {
 
     @Autowired
     UserService userService;
+
+    @RequestMapping("/test")
+    @AuditOperate(name = "name2", value = "value2")
+    public String testAuditOperate() throws IOException {
+        userService.testaa(123);
+        String aa = "Ok";
+        return aa;
+    }
 
     @RequestMapping("/getUser")
     public void getUser(Integer id,HttpServletResponse respone) throws IOException {

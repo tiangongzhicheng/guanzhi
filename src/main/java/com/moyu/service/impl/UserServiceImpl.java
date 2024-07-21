@@ -1,5 +1,6 @@
 package com.moyu.service.impl;
 
+import com.moyu.annotation.AuditOperate;
 import com.moyu.entity.User;
 import com.moyu.mapper.UserMapper;
 import com.moyu.service.UserService;
@@ -18,11 +19,17 @@ public class UserServiceImpl implements UserService {
     UserMapper userMapper;
 
     @Override
+    @AuditOperate(name = "nameA", value = "valueA")
+    public String testaa(Integer id) {
+        return "aa";
+    }
+
+    @Override
     public User getUser(Integer id) {
         return userMapper.getUser(id);
     }
 
-    public List<User> getUserByWhere(User user){
+    public List<User> getUserByWhere(User user) {
         return userMapper.getUserByWhere(user);
     }
 }

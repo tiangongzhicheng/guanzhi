@@ -13,6 +13,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -25,39 +26,25 @@ public class FileUtils {
     @Resource
     private ResourceLoader resourceLoader;
 
-    /**
-     * 根据https地址从远端下载文件
-     * @param originalFilename
-     * @param url
-     * @param response
-     * @throws IOException
-     */
-    public void downloadFile(String originalFilename, String url, HttpServletResponse response)throws IOException {
-        ByteArrayOutputStream outputStream = httpClientUtil.sendHttpGetStream(url);
-        byte[] bytes = outputStream.toByteArray();
-        outputStream.flush();
-        outputStream.close();
-        response.setContentType("application/octet-stream");
-        String filename = java.net.URLEncoder.encode( originalFilename, "UTF-8");
-        response.addHeader("Content-disposition", "attachment;filename*=utf-8'zh_cn'" + filename );
-        OutputStream toClient = new BufferedOutputStream(response.getOutputStream());
-        toClient.write(bytes, 0, bytes.length);
-        toClient.flush();
-        toClient.close();
+
+    public boolean downloadFile(String httpUrl, String fileName, String savePath) throws IOException {
+        return downloadFile(httpUrl, fileName, savePath, null);
     }
 
     /**
      * 根据https地址从远端下载文件
+     *
      * @param fileName
      * @param httpUrl
      * @throws IOException
      */
-    public boolean downloadFile(String httpUrl, String fileName, String savePath)throws IOException {
+    public boolean downloadFile(String httpUrl, String fileName, String savePath, Map<String, String> headers) throws IOException {
         ByteArrayOutputStream outputStream = null;
         FileOutputStream fileOutputStream = null;
         try {
-            outputStream = httpClientUtil.sendHttpGetStream(httpUrl);
-            if(outputStream == null){
+            outputStream = httpClientUtil.doGetDownloadFile(httpUrl, headers);
+            if (outputStream == null) {
+                log.error("-----downloadFile失败-----,error={}");
                 return false;
             }
             byte[] bytes = outputStream.toByteArray();
@@ -67,12 +54,12 @@ public class FileUtils {
             }
             fileOutputStream = new FileOutputStream(saveDir + "/" + fileName);
             fileOutputStream.write(bytes);
-        }catch (Exception e){
-            log.error("downloadFile出错了，info====={}",e);
-        }finally {
-            if(outputStream!=null)
+        } catch (Exception e) {
+            log.error("downloadFile出错了，info====={}", e);
+        } finally {
+            if (outputStream != null)
                 outputStream.close();
-            if(outputStream!=null)
+            if (outputStream != null)
                 fileOutputStream.close();
         }
         return true;
@@ -80,15 +67,16 @@ public class FileUtils {
 
     /**
      * 从静态资源下载文件
+     *
      * @param fileName
      * @param path
      * @param response
      */
-    public void downloadInsertExcelTemplate(String fileName,String path, HttpServletResponse response) {
+    public void downloadInsertExcelTemplate(String fileName, String path, HttpServletResponse response) {
         InputStream inputStream = null;
         ServletOutputStream servletOutputStream = null;
         try {
-            org.springframework.core.io.Resource resource = resourceLoader.getResource("classpath:"+path);
+            org.springframework.core.io.Resource resource = resourceLoader.getResource("classpath:" + path);
             inputStream = resource.getInputStream();
             response.addHeader("Content-Disposition", "attachment;filename=" + new String(fileName.getBytes("UTF-8"), "iso-8859-1"));
             servletOutputStream = response.getOutputStream();
@@ -114,9 +102,10 @@ public class FileUtils {
 
     /**
      * 读取CSV文件
+     *
      * @param filepath
      */
-    public void readCSVFile(String filepath){
+    public void readCSVFile(String filepath) {
         //String filepath = "C:\\Users\\1\\Desktop\\新建文本文档.csv";
         File csv = new File(filepath); // CSV文件路径
         csv.setReadable(true);//设置可读‪‪‪
@@ -171,7 +160,7 @@ public class FileUtils {
             response.addHeader("Content-Disposition", "attachment;fileName=" + filename);
             OutputStream os = response.getOutputStream();
             ZipOutputStream zos = new ZipOutputStream(os);
-            zos.putNextEntry(new ZipEntry( "文件名称"));
+            zos.putNextEntry(new ZipEntry("文件名称"));
             //文件字节数组
             byte[] bytes = new byte[1024];
             zos.write(bytes, 0, bytes.length);
@@ -183,12 +172,5 @@ public class FileUtils {
         }
     }
 
-//    public void batchDownloadFile( HttpServletResponse response) {
-//
-//        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-//        ZipOutputStream zos = new ZipOutputStream(bos);
-//        UrlFilesToZipUtilis s = new UrlFilesToZipUtilis();
-//
-//    }
 
 }

@@ -1,0 +1,67 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /guanzhi
+
+spring:
+  application:
+    name: guan-zhi
+  servlet:
+    multipart:
+      max-request-size: 20MB
+      max-file-size: 20MB
+      resolve-lazily: true
+  profiles:
+    active: local
+  messages:
+    encoding: UTF-8
+  aop:
+    auto: true
+    proxy-target-class: false
+
+  datasource:
+    driverClassName: com.mysql.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1 FROM DUAL
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    maxPoolPreparedStatementPerConnectionSize: 20
+    filters: stat,wall,log4j2
+    connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+    useGlobalDataSourceStat: true
+
+mybatis:
+  type-aliases-package: com.moyu.entity.*
+  configuration:
+    map-underscore-to-camel-case: true  #设置数据库下划线格式对应实体的驼峰格式
+    use-generated-keys: true
+    default-fetch-size: 100
+    default-statement-timeout: 60
+
+
+---
+spring:
+  profiles: local
+  datasource:
+    driverClassName: com.mysql.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/moyu?useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: root
+
+---
+spring:
+  profiles: master
+  datasource:
+    driverClassName: com.mysql.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/guanzhi?useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: root
+

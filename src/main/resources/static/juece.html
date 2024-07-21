@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机决策器</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: #f0f0f0; /* 背景色 */
+        }
+
+        .content {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        #wheel-container {
+            position: relative;
+            margin-right: 20px;
+        }
+
+        #wheel {
+            border-radius: 50%;
+            border: 4px solid #333;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #pointer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 200px; /* 调整长度为圆盘半径的4/5 */
+            background-color: brown; /* 初始指针颜色 */
+            clip-path: polygon(50% 0%, 60% 10%, 80% 70%, 100% 100%, 50% 90%, 0% 100%, 20% 70%, 40% 10%);
+            transform-origin: 50% 100%; /* 确保指针的底部中心是旋转点 */
+            transform: translate(-50%, -100%) rotate(0deg); /* translate(-50%, -100%) 确保指针的底部位于圆盘中心 */
+            z-index: 10;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        button {
+            background-color: #333; /* 按钮背景色 */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #555; /* 鼠标悬停时按钮背景色 */
+        }
+
+        #elementInputContainer {
+            margin-top: 20px;
+        }
+
+        .element-input {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .element-input input {
+            margin: 0 5px;
+            padding: 5px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 120px;
+        }
+
+        .remove-element-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+
+        .remove-element-btn:hover {
+            background-color: darkred;
+        }
+
+        #result {
+            margin-top: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #007BFF; /* 结果文本颜色 */
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div id="wheel-container">
+            <canvas id="wheel" width="500" height="500"></canvas>
+            <div id="pointer"></div>
+        </div>
+        <div class="controls">
+            <button id="addElementBtn">添加元素</button>
+            <div id="elementInputContainer"></div>
+            <button id="goBtn">Go</button>
+            <div id="result"></div>
+        </div>
+    </div>
+    <script>
+        // 获取元素和上下文
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const addElementBtn = document.getElementById('addElementBtn');
+        const elementInputContainer = document.getElementById('elementInputContainer');
+        const goBtn = document.getElementById('goBtn');
+        const resultDiv = document.getElementById('result');
+
+        let elements = [];
+        let totalProbability = 0;
+        // 按顺序使用的颜色
+        // const colors = ['#FF0000', '#FFA500', '#00BFFF', '#00FF00', '#FFFF00', '#FFC0CB']; 
+        const colors = ['#FF0000', '#FFA500', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#800080']; 
+
+        // 添加元素按钮点击事件
+        addElementBtn.addEventListener('click', () => {
+            const elementInput = document.createElement('div');
+            elementInput.className = 'element-input';
+            elementInput.innerHTML = `
+                <input type="text" placeholder="元素" class="element-name">
+                <input type="number" placeholder="概率" class="element-probability" min="1" max="100">
+                <button class="remove-element-btn">X</button>
+            `;
+            elementInputContainer.appendChild(elementInput);
+
+            // 删除元素按钮点击事件
+            elementInput.querySelector('.remove-element-btn').addEventListener('click', () => {
+                elementInputContainer.removeChild(elementInput);
+                updateWheel();
+            });
+
+            // 元素名称和概率更改事件
+            elementInput.querySelector('.element-probability').addEventListener('change', () => {
+                updateWheel();
+            });
+
+            elementInput.querySelector('.element-name').addEventListener('change', () => {
+                updateWheel();
+            });
+        });
+
+        // 绘制圆盘
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let startAngle = 0;
+            elements.forEach(element => {
+                const sliceAngle = 2 * Math.PI * (element.probability / 100);
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, canvas.height / 2);
+                ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, startAngle, startAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = element.color;
+                ctx.fill();
+                ctx.stroke();
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(startAngle + sliceAngle / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#000';
+                ctx.font = '20px Arial';
+                ctx.fillText(element.name, canvas.width / 2 - 10, 10);
+                ctx.restore();
+                startAngle += sliceAngle;
+            });
+        }
+
+        // 更新圆盘
+        function updateWheel() {
+            const elementNames = document.querySelectorAll('.element-name');
+            const elementProbabilities = document.querySelectorAll('.element-probability');
+            elements = [];
+            totalProbability = 0;
+
+            elementNames.forEach((input, index) => {
+                const name = input.value;
+                const probability = parseFloat(elementProbabilities[index].value);
+                if (name && probability > 0) {
+                    totalProbability += probability;
+                    elements.push({
+                        name: name,
+                        probability: probability,
+                        color: colors[index % colors.length] // 按顺序选择颜色
+                    });
+                }
+            });
+
+            drawWheel();
+        }
+
+        // Go按钮点击事件
+        goBtn.addEventListener('click', () => {
+            if (totalProbability !== 100) {
+                alert('所有元素的概率之和必须为100%');
+                return;
+            }
+            spinWheel();
+        });
+
+        // 旋转圆盘
+        function spinWheel() {
+            const totalSpins = 5; // 总圈数
+            const spinDuration = 3000;
+            const startAngle = Math.random() * 2 * Math.PI;
+            const endAngle = startAngle + totalSpins * 2 * Math.PI;
+
+            let currentAngle = startAngle;
+            const pointer = document.getElementById('pointer');
+            const startTime = performance.now();
+
+            function animate(time) {
+                const elapsedTime = time - startTime;
+                const t = elapsedTime / spinDuration;
+                const easeOutQuad = t => t * (2 - t); 
+                const currentSpin = easeOutQuad(t) * (endAngle - startAngle);
+                currentAngle = startAngle + currentSpin;
+
+                pointer.style.transform = `translate(-50%, -100%) rotate(${currentAngle}rad)`; /* 确保指针的底部中心是旋转点 */
+
+                if (elapsedTime < spinDuration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    pointer.style.transform = `translate(-50%, -100%) rotate(${endAngle}rad)`; /* 确保指针的底部中心是旋转点 */
+                    const normalizedAngle = (endAngle % (2 * Math.PI)) + (2 * Math.PI) % (2 * Math.PI); // 规范化角度至[0, 2*PI)
+                    const pointerAngle = (normalizedAngle - Math.PI / 2 + (2 * Math.PI)) % (2 * Math.PI); // 调整角度指向方向
+                    const selectedElement = elements.find((element, index) => {
+                        const elementStartAngle = 2 * Math.PI * (elements.slice(0, index).reduce((sum, el) => sum + el.probability, 0) / 100);
+                        const elementEndAngle = elementStartAngle + 2 * Math.PI * (element.probability / 100);
+                        return pointerAngle >= elementStartAngle && pointerAngle < elementEndAngle;
+                    });
+                    resultDiv.innerText = `结果: ${selectedElement.name}`;
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+    </script>
+</body>
+</html>

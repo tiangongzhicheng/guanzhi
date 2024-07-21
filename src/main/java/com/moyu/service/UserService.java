@@ -1,5 +1,6 @@
 package com.moyu.service;
 
+import com.moyu.annotation.AuditOperate;
 import com.moyu.entity.User;
 
 import java.util.List;
@@ -13,5 +14,6 @@ public interface UserService {
 
     List<User> getUserByWhere(User user);
 
-
+    @AuditOperate(name = "nameA", value = "valueA")
+    String  testaa(Integer id);
 }
